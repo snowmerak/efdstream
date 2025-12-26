@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/snowmerak/efdstream/go/efd"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -70,32 +69,10 @@ func runParent() {
 }
 
 func runChild() {
-	fmt.Printf("[Go Child] Started with FDs: P2C(%d,%d,%d) C2P(%d,%d,%d)\n",
-		*fdP2CSend, *fdP2CAck, *fdP2CShm, *fdC2PSend, *fdC2PAck, *fdC2PShm)
+	fmt.Printf("[Go Child] Started with FDs: P2C(3,4,5) C2P(6,7,8)\n")
 
-	// Handle FD mapping for Go Child
-	// FDs come in at 3, 4, 5, 6, 7, 8
-	// If flags differ, we dup.
-	if *fdP2CSend != 3 {
-		unix.Dup2(3, *fdP2CSend)
-	}
-	if *fdP2CAck != 4 {
-		unix.Dup2(4, *fdP2CAck)
-	}
-	if *fdP2CShm != 5 {
-		unix.Dup2(5, *fdP2CShm)
-	}
-	if *fdC2PSend != 6 {
-		unix.Dup2(6, *fdC2PSend)
-	}
-	if *fdC2PAck != 7 {
-		unix.Dup2(7, *fdC2PAck)
-	}
-	if *fdC2PShm != 8 {
-		unix.Dup2(8, *fdC2PShm)
-	}
-
-	child, err := efd.NewShmChild(*fdP2CSend, *fdP2CAck, *fdP2CShm, *fdC2PSend, *fdC2PAck, *fdC2PShm, *shmSize)
+	// FDs are fixed to 3, 4, 5, 6, 7, 8
+	child, err := efd.NewShmChild(*shmSize)
 	if err != nil {
 		log.Fatalf("[Go Child] Failed to create child: %v", err)
 	}

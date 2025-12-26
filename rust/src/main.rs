@@ -85,6 +85,12 @@ fn run_parent(child_path: &str, shm_size: usize) {
 fn run_child(fd_p2c_send: i32, fd_p2c_ack: i32, fd_p2c_shm: i32,
              fd_c2p_send: i32, fd_c2p_ack: i32, fd_c2p_shm: i32,
              shm_size: usize) {
+    // Test: Open a file BEFORE initializing ShmChild to see if it takes FD 3-8
+    if let Ok(f) = std::fs::File::open("/dev/null") {
+        use std::os::unix::io::AsRawFd;
+        println!("[Rust Child] Opened /dev/null before init. Assigned FD: {}", f.as_raw_fd());
+    }
+
     println!("[Rust Child] Started with P2C({},{},{}) C2P({},{},{})", 
         fd_p2c_send, fd_p2c_ack, fd_p2c_shm, fd_c2p_send, fd_c2p_ack, fd_c2p_shm);
 

@@ -215,14 +215,15 @@ type ShmChild struct {
 }
 
 // NewShmChild creates a new ShmChild instance.
-func NewShmChild(fdP2CSend, fdP2CAck, fdP2CShm, fdC2PSend, fdC2PAck, fdC2PShm, shmSize int) (*ShmChild, error) {
+// It assumes FDs 3, 4, 5, 6, 7, 8 are passed from the parent.
+func NewShmChild(shmSize int) (*ShmChild, error) {
 	c := &ShmChild{
-		fdP2CSend: fdP2CSend,
-		fdP2CAck:  fdP2CAck,
-		fdP2CShm:  fdP2CShm,
-		fdC2PSend: fdC2PSend,
-		fdC2PAck:  fdC2PAck,
-		fdC2PShm:  fdC2PShm,
+		fdP2CSend: 3,
+		fdP2CAck:  4,
+		fdP2CShm:  5,
+		fdC2PSend: 6,
+		fdC2PAck:  7,
+		fdC2PShm:  8,
 		shmSize:   shmSize,
 	}
 
