@@ -79,12 +79,14 @@ cd rust
 import "github.com/snowmerak/efdstream/go/efd"
 
 // Parent
-parent := efd.NewShmParent("/path/to/child", 3, 4, 5, 6, 7, 8, 1024*1024)
+// FDs are auto-generated and mapped to 3, 4, 5, 6, 7, 8 in the child process.
+parent := efd.NewShmParent("/path/to/child", 1024*1024)
 parent.Start()
 parent.SendData([]byte("Hello"))
 data, _ := parent.ReadData()
 
 // Child
+// The child process receives FDs 3, 4, 5, 6, 7, 8.
 child, _ := efd.NewShmChild(3, 4, 5, 6, 7, 8, 1024*1024)
 child.Listen(func(data []byte) {
     // Handle received data
@@ -98,12 +100,14 @@ child.SendData([]byte("Reply"))
 use efdstream::{ShmParent, ShmChild};
 
 // Parent
-let mut parent = ShmParent::new("/path/to/child", 3, 4, 5, 6, 7, 8, 1024*1024);
+// FDs are auto-generated and mapped to 3, 4, 5, 6, 7, 8 in the child process.
+let mut parent = ShmParent::new("/path/to/child", 1024*1024);
 parent.start().unwrap();
 parent.send_data(b"Hello").unwrap();
 let data = parent.read_data().unwrap();
 
 // Child
+// The child process receives FDs 3, 4, 5, 6, 7, 8.
 let mut child = ShmChild::new(3, 4, 5, 6, 7, 8, 1024*1024);
 child.listen(|data| {
     // Handle received data

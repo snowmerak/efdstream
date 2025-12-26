@@ -14,15 +14,6 @@ use std::ffi::CString;
 
 pub struct ShmParent {
     child_path: String,
-    // P2C
-    fd_p2c_send: RawFd,
-    fd_p2c_ack: RawFd,
-    fd_p2c_shm: RawFd,
-    // C2P
-    fd_c2p_send: RawFd,
-    fd_c2p_ack: RawFd,
-    fd_c2p_shm: RawFd,
-
     shm_size: usize,
 
     // Resources
@@ -42,14 +33,9 @@ pub struct ShmParent {
 unsafe impl Send for ShmParent {}
 
 impl ShmParent {
-    pub fn new(child_path: &str, 
-               fd_p2c_send: RawFd, fd_p2c_ack: RawFd, fd_p2c_shm: RawFd,
-               fd_c2p_send: RawFd, fd_c2p_ack: RawFd, fd_c2p_shm: RawFd,
-               shm_size: usize) -> Self {
+    pub fn new(child_path: &str, shm_size: usize) -> Self {
         Self {
             child_path: child_path.to_string(),
-            fd_p2c_send, fd_p2c_ack, fd_p2c_shm,
-            fd_c2p_send, fd_c2p_ack, fd_c2p_shm,
             shm_size,
             file_p2c_send: None, file_p2c_ack: None, shm_p2c_file: None, shm_p2c_ptr: ptr::null_mut(),
             file_c2p_send: None, file_c2p_ack: None, shm_c2p_file: None, shm_c2p_ptr: ptr::null_mut(),
@@ -99,23 +85,24 @@ impl ShmParent {
         // 3. Start Child
         let mut cmd = Command::new(&self.child_path);
         cmd.arg("-mode").arg("child");
-        cmd.arg("-fd-p2c-send").arg(self.fd_p2c_send.to_string());
-        cmd.arg("-fd-p2c-ack").arg(self.fd_p2c_ack.to_string());
-        cmd.arg("-fd-p2c-shm").arg(self.fd_p2c_shm.to_string());
-        cmd.arg("-fd-c2p-send").arg(self.fd_c2p_send.to_string());
-        cmd.arg("-fd-c2p-ack").arg(self.fd_c2p_ack.to_string());
-        cmd.arg("-fd-c2p-shm").arg(self.fd_c2p_shm.to_string());
+        // We map the FDs to 3, 4, 5, 6, 7, 8 in the child process.
+        cmd.arg("-fd-p2c-send").arg("3");
+        cmd.arg("-fd-p2c-ack").arg("4");
+        cmd.arg("-fd-p2c-shm").arg("5");
+        cmd.arg("-fd-c2p-send").arg("6");
+        cmd.arg("-fd-c2p-ack").arg("7");
+        cmd.arg("-fd-c2p-shm").arg("8");
         cmd.arg("-shm-size").arg(self.shm_size.to_string());
         cmd.stdin(Stdio::inherit());
         cmd.stdout(Stdio::inherit());
         cmd.stderr(Stdio::inherit());
 
-        let target_p2c_send = self.fd_p2c_send;
-        let target_p2c_ack = self.fd_p2c_ack;
-        let target_p2c_shm = self.fd_p2c_shm;
-        let target_c2p_send = self.fd_c2p_send;
-        let target_c2p_ack = self.fd_c2p_ack;
-        let target_c2p_shm = self.fd_c2p_shm;
+        let target_p2c_send = 3;
+        let target_p2c_ack = 4;
+        let target_p2c_shm = 5;
+        let target_c2p_send = 6;
+        let target_c2p_ack = 7;
+        let target_c2p_shm = 8;
 
         unsafe {
             cmd.pre_exec(move || {

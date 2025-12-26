@@ -44,25 +44,20 @@ fn main() {
     }
 
     if mode == "parent" {
-        run_parent(&child_path, fd_p2c_send, fd_p2c_ack, fd_p2c_shm, fd_c2p_send, fd_c2p_ack, fd_c2p_shm, shm_size);
+        run_parent(&child_path, shm_size);
     } else {
         run_child(fd_p2c_send, fd_p2c_ack, fd_p2c_shm, fd_c2p_send, fd_c2p_ack, fd_c2p_shm, shm_size);
     }
 }
 
-fn run_parent(child_path: &str, 
-              fd_p2c_send: i32, fd_p2c_ack: i32, fd_p2c_shm: i32,
-              fd_c2p_send: i32, fd_c2p_ack: i32, fd_c2p_shm: i32,
-              shm_size: usize) {
+fn run_parent(child_path: &str, shm_size: usize) {
     if child_path.is_empty() {
         eprintln!("Child path is required in parent mode");
         std::process::exit(1);
     }
 
-    let mut parent = ShmParent::new(child_path, 
-        fd_p2c_send, fd_p2c_ack, fd_p2c_shm,
-        fd_c2p_send, fd_c2p_ack, fd_c2p_shm,
-        shm_size);
+    // FDs are now auto-generated and mapped to 3, 4, 5, 6, 7, 8 in the child.
+    let mut parent = ShmParent::new(child_path, shm_size);
     parent.start().expect("Failed to start parent");
 
     println!("[Rust Parent] Child started");

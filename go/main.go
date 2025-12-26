@@ -40,8 +40,8 @@ func runParent() {
 		log.Fatal("Child path is required in parent mode")
 	}
 
-	// Use default FDs for child: 3, 4, 5, 6, 7, 8
-	parent := efd.NewShmParent(*childPath, 3, 4, 5, 6, 7, 8, *shmSize)
+	// FDs are now auto-generated and mapped to 3, 4, 5, 6, 7, 8 in the child.
+	parent := efd.NewShmParent(*childPath, *shmSize)
 	if err := parent.Start(); err != nil {
 		log.Fatalf("Failed to start parent: %v", err)
 	}

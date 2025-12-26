@@ -12,16 +12,7 @@ import (
 // ShmParent manages the child process, eventfd, and shared memory.
 type ShmParent struct {
 	childPath string
-	// P2C (Parent to Child)
-	fdP2CSend int
-	fdP2CAck  int
-	fdP2CShm  int
-	// C2P (Child to Parent)
-	fdC2PSend int
-	fdC2PAck  int
-	fdC2PShm  int
-
-	shmSize int
+	shmSize   int
 
 	// Resources
 	efdP2CSend int
@@ -46,15 +37,9 @@ type ShmParent struct {
 }
 
 // NewShmParent creates a new ShmParent instance.
-func NewShmParent(childPath string, fdP2CSend, fdP2CAck, fdP2CShm, fdC2PSend, fdC2PAck, fdC2PShm, shmSize int) *ShmParent {
+func NewShmParent(childPath string, shmSize int) *ShmParent {
 	return &ShmParent{
 		childPath: childPath,
-		fdP2CSend: fdP2CSend,
-		fdP2CAck:  fdP2CAck,
-		fdP2CShm:  fdP2CShm,
-		fdC2PSend: fdC2PSend,
-		fdC2PAck:  fdC2PAck,
-		fdC2PShm:  fdC2PShm,
 		shmSize:   shmSize,
 	}
 }
@@ -114,14 +99,18 @@ func (p *ShmParent) Start() error {
 	p.fileC2PShm = os.NewFile(uintptr(p.memfdC2P), "efd_c2p_shm")
 
 	// Prepare command
+	// We map the FDs to 3, 4, 5, 6, 7, 8 in the child process.
+	// ExtraFiles[0] -> FD 3
+	// ExtraFiles[1] -> FD 4
+	// ...
 	p.cmd = exec.Command(p.childPath,
 		"-mode", "child",
-		"-fd-p2c-send", fmt.Sprintf("%d", p.fdP2CSend),
-		"-fd-p2c-ack", fmt.Sprintf("%d", p.fdP2CAck),
-		"-fd-p2c-shm", fmt.Sprintf("%d", p.fdP2CShm),
-		"-fd-c2p-send", fmt.Sprintf("%d", p.fdC2PSend),
-		"-fd-c2p-ack", fmt.Sprintf("%d", p.fdC2PAck),
-		"-fd-c2p-shm", fmt.Sprintf("%d", p.fdC2PShm),
+		"-fd-p2c-send", "3",
+		"-fd-p2c-ack", "4",
+		"-fd-p2c-shm", "5",
+		"-fd-c2p-send", "6",
+		"-fd-c2p-ack", "7",
+		"-fd-c2p-shm", "8",
 		"-shm-size", fmt.Sprintf("%d", p.shmSize),
 	)
 	p.cmd.Stdout = os.Stdout
