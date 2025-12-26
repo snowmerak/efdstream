@@ -143,4 +143,4 @@ shm_child_send_data(child, (uint8_t*)"Reply", 5);
 
 ## License
 
-MIT
+MPL-2.0
