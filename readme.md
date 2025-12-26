@@ -51,6 +51,13 @@ go build -o efdstream_go main.go
 ```
 The binary will be at `go/efdstream_go`.
 
+### Build C
+```bash
+cd c
+make
+```
+The binary will be at `c/efdstream_c`.
+
 ## Usage Examples
 
 ### 1. Go Parent ↔ Rust Child
@@ -113,6 +120,25 @@ child.listen(|data| {
     // Handle received data
 }).unwrap();
 child.send_data(b"Reply").unwrap();
+```
+
+### C
+
+```c
+#include "efd.h"
+
+// Parent
+shm_parent_t *parent = shm_parent_new("/path/to/child", 1024*1024);
+shm_parent_start(parent);
+shm_parent_send_data(parent, (uint8_t*)"Hello", 5);
+size_t len;
+uint8_t *data = shm_parent_read_data(parent, &len);
+free(data);
+
+// Child
+shm_child_t *child = shm_child_new(1024*1024);
+shm_child_listen(child, my_handler);
+shm_child_send_data(child, (uint8_t*)"Reply", 5);
 ```
 
 ## License
