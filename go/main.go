@@ -15,6 +15,8 @@ import (
 var (
 	mode      = flag.String("mode", "parent", "Mode: parent or child")
 	childPath = flag.String("child", "", "Path to child binary (required for parent mode)")
+	fdSend    = flag.Int("fd-send", 3, "FD for sending data (child mode)")
+	fdAck     = flag.Int("fd-ack", 4, "FD for sending ack (child mode)")
 )
 
 func main() {
@@ -33,9 +35,6 @@ func runParent() {
 	}
 
 	// 1. Create eventfds
-	// EFD_CLOEXEC is usually good practice, but we want to pass them to child.
-	// However, Go's os.File handling usually sets CLOEXEC by default and clears it for ExtraFiles.
-	// Let's use 0 for flags.
 	efdSend, err := unix.Eventfd(0, 0)
 	if err != nil {
 		log.Fatalf("Failed to create efdSend: %v", err)
@@ -52,10 +51,22 @@ func runParent() {
 	defer fileAck.Close()
 
 	// 2. Start Child
-	cmd := exec.Command(*childPath, "-mode", "child")
+	// We pass the FD numbers we intend the child to use.
+	// Since we are using ExtraFiles, the first file will be FD 3, the second FD 4.
+	// So we tell the child to use 3 and 4.
+	// If we wanted to be dynamic, we could change the order or add dummy files,
+	// but ExtraFiles always maps sequentially starting from 3.
+	targetFdSend := 3
+	targetFdAck := 4
+
+	cmd := exec.Command(*childPath,
+		"-mode", "child",
+		"-fd-send", fmt.Sprintf("%d", targetFdSend),
+		"-fd-ack", fmt.Sprintf("%d", targetFdAck),
+	)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	// FD 0, 1, 2 are inherited by default if Stdin/out/err are set or nil (depending on setup).
+
 	// ExtraFiles starts at FD 3.
 	// FD 3 = efdSend (Parent writes, Child reads)
 	// FD 4 = efdAck (Parent reads, Child writes)
@@ -68,13 +79,9 @@ func runParent() {
 
 	// 3. Communication Loop
 	buf := make([]byte, 8)
-	// Native endian for eventfd
 	native := binary.NativeEndian
 
 	for i := 0; i < 5; i++ {
-		// Send Length (e.g., 8 bytes)
-		// In eventfd, write adds to the counter.
-		// The user said "Send length". Let's send the value '8'.
 		var lengthToSend uint64 = 8
 		native.PutUint64(buf, lengthToSend)
 
@@ -84,8 +91,6 @@ func runParent() {
 			log.Fatalf("[Go Parent] Write error: %v", err)
 		}
 
-		// Wait for Ack
-		// User wanted -1, but eventfd doesn't support it. We expect 1 (or agreed value).
 		fmt.Printf("[Go Parent] Waiting for ACK...\n")
 		_, err = unix.Read(efdAck, buf)
 		if err != nil {
@@ -97,22 +102,15 @@ func runParent() {
 		time.Sleep(1 * time.Second)
 	}
 
-	// Cleanup
 	cmd.Process.Kill()
 }
 
 func runChild() {
-	fmt.Println("[Go Child] Started")
+	fmt.Printf("[Go Child] Started with fd-send=%d, fd-ack=%d\n", *fdSend, *fdAck)
 
-	// FD 3 = efdSend (Read)
-	// FD 4 = efdAck (Write)
-	// In Go, we can construct os.File from uintptr(3) and uintptr(4)
-	// But we need to be careful about validity.
-
-	// Note: os.NewFile returns nil if fd is invalid, but here we assume they are passed.
-	// We use unix.Read/Write directly on the FDs.
-	fdRead := 3
-	fdWrite := 4
+	// Use the FDs passed via flags
+	fdRead := *fdSend
+	fdWrite := *fdAck
 
 	buf := make([]byte, 8)
 	native := binary.NativeEndian
@@ -128,9 +126,6 @@ func runChild() {
 		fmt.Printf("[Go Child] Received length: %d\n", length)
 
 		// Send Ack
-		// User requested -1, but we use 1.
-		// Or 0xFFFFFFFFFFFFFFFE if we want to simulate a large unsigned number close to -1.
-		// Let's use 1 as agreed.
 		var ackVal uint64 = 1
 		native.PutUint64(buf, ackVal)
 
